@@ -4,8 +4,8 @@
 	<cfimport taglib="/farcry/core/packages/fourq/tags/" prefix="q4">
 	
 	
-	<cfset this.name = "Memcached" />
-	<cfset this.description = "<strong>Memcached</strong> plugin replaces the default object and webskin caching mechanism in Core with an external memcached server." />
+	<cfset this.name = "Redis" />
+	<cfset this.description = "<strong>Redis</strong> plugin replaces the default object and webskin caching mechanism in Core with an external redis server." />
 	<cfset this.lRequiredPlugins = "" />
 	
 

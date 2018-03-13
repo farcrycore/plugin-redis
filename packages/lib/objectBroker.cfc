@@ -45,12 +45,11 @@
 		<cfargument name="line" type="string" required="true">
 
 		<cfset var starttime = getTickCount() />
-		<cfset var memcached = getMemcached() />
+		<cfset var redis = getRedis() />
 		<cfset var actualkey = getCacheKey(typename=arguments.cachename, objectid=arguments.key) />
 
-		<cfif not structIsEmpty(memcached)>
-			<cfset application.fc.lib.memcached.add(memcached, actualkey, "", application.objectbroker[arguments.cachename].timeout) />
-			<cfset application.fc.lib.memcached.append(memcached, actualkey, arguments.line & chr(10)) />
+		<cfif not structIsEmpty(redis)>
+			<cfset application.fc.lib.redis.append(redis, actualkey, arguments.line & chr(10)) />
 
 			<cfset this.add_total = this.add_total + getTickCount() - starttime />
 			<cfset this.add_count = this.add_count + 1 />
@@ -789,21 +788,17 @@
 		<cfset var protocolType = "" />
 		<cfset var locatorType = "" />
 		<cfset var addresses = "" />
-		
+
 		<cfparam name="arguments.config" default="#structnew()#">
 		<cfset this.config = arguments.config />
 
-		<cfparam name="this.config.servers" default="#application.fapi.getConfig('memcached','servers','')#">
-		<cfparam name="this.config.protocol" default="#application.fapi.getConfig('memcached','protocol','')#">
-		<cfparam name="this.config.locator" default="#application.fapi.getConfig('memcached','locator','')#">
-		<cfparam name="this.config.operationTimeout" default="#application.fapi.getConfig('memcached','operationTimeout','')#">
-		
-		<cfif isdefined("arguments.config.servers") and len(trim(arguments.config.servers))
-			and isdefined("arguments.config.protocol") and len(trim(arguments.config.protocol))
-			and isdefined("arguments.config.locator") and len(trim(arguments.config.locator))
-			and isdefined("arguments.config.operationTimeout") and len(trim(arguments.config.operationTimeout))>
+		<cfparam name="this.config.server" default="#application.fapi.getConfig('redis','server','')#">
+		<cfparam name="this.config.port" default="#application.fapi.getConfig('redis','port','')#">
+
+		<cfif isdefined("this.config.server") and len(trim(this.config.server))
+			and isdefined("this.config.port") and len(trim(this.config.port))>
 			
-			<cfset this.memcached = createobject("component","farcry.plugins.memcached.packages.lib.memcached").initializeClient(arguments.config) />
+			<cfset this.redis = createobject("component","farcry.plugins.redis.packages.lib.redis").initializeClient(this.config) />
 			
 			<cfset this.pull_total = 0 />
 			<cfset this.pull_count = 0 />
@@ -812,11 +807,11 @@
 		<cfelse>
 			<cfif not structKeyExists(this, "bLogggedNoConfig")>
 				<cfset this.bLogggedNoConfig = true />
-				<cflog type="information" application="true" file="memcached" text="No config for memcached" />
+				<cflog type="information" application="true" file="redis" text="No config for redis" />
 			</cfif>
-			<cfif structkeyexists(this,"memcached")>
-				<cflog type="information" application="true" file="memcached" text="Removing memcached client" />
-				<cfset structdelete(this,"memcached") />
+			<cfif structkeyexists(this,"redis")>
+				<cflog type="information" application="true" file="redis" text="Removing redis client" />
+				<cfset structdelete(this,"redis") />
 			</cfif>
 			<cfif structKeyExists(this,"config")>
 				<cfset structdelete(this,"config") />
@@ -824,14 +819,14 @@
 		</cfif>
 	</cffunction>
 
-	<cffunction name="getMemcached" access="public" output="false" returntype="any">
+	<cffunction name="getRedis" access="public" output="false" returntype="any">
 		
-		<cfif not structKeyExists(this, "memcached") and not structKeyExists(this, "config")>
+		<cfif not structKeyExists(this, "redis") and not structKeyExists(this, "config")>
 			<cfset cacheInitialise() />
 		</cfif>
 
-		<cfif structKeyExists(this, "memcached")>
-			<cfreturn this.memcached />
+		<cfif structKeyExists(this, "redis")>
+			<cfreturn this.redis />
 		<cfelse>
 			<cfreturn {} />
 		</cfif>
@@ -861,7 +856,7 @@
 		<cfreturn key />
 	</cffunction>
 
-	<cffunction name="getCacheVersion" access="public" output="false" returntype="string" hint="The plugin stores a cache 'version' in memcached that should be used in all keys. Updating this version should equivilent to clearing the cache.">
+	<cffunction name="getCacheVersion" access="public" output="false" returntype="string" hint="The plugin stores a cache 'version' in redis that should be used in all keys. Updating this version should equivilent to clearing the cache.">
 		<cfargument name="typename" type="string" required="false" default="app" />
 		<cfargument name="increment" type="boolean" required="false" default="false" />
 
@@ -933,11 +928,11 @@
 		
 		<cfset var value = structnew() />
 		<cfset var starttime = getTickCount() />
-		<cfset var id = "memcached-get-#application.fapi.getUUID()#" />
-		<cfset var memcached = getMemcached() />
+		<cfset var id = "redis-get-#application.fapi.getUUID()#" />
+		<cfset var redis = getRedis() />
 
-		<cfif not structIsEmpty(memcached)>
-			<cfset value = application.fc.lib.memcached.get(memcached,arguments.key) />
+		<cfif not structIsEmpty(redis)>
+			<cfset value = application.fc.lib.redis.get(redis,arguments.key) />
 			
 			<cfset this.pull_total = this.pull_total + getTickCount() - starttime />
 			<cfset this.pull_count = this.pull_count + 1 />
@@ -952,10 +947,10 @@
 		<cfargument name="timeout" type="numeric" required="false" default="3600" hint="Number of seconds until this item should timeout" />
 		
 		<cfset var starttime = getTickCount() />
-		<cfset var memcached = getMemcached() />
+		<cfset var redis = getRedis() />
 		
-		<cfif not structIsEmpty(memcached)>
-			<cfset application.fc.lib.memcached.set(memcached,arguments.key,arguments.data,arguments.timeout) />
+		<cfif not structIsEmpty(redis)>
+			<cfset application.fc.lib.redis.set(redis,arguments.key,arguments.data,arguments.timeout) />
 
 			<cfset this.add_total = this.add_total + getTickCount() - starttime />
 			<cfset this.add_count = this.add_count + 1 />
@@ -965,10 +960,10 @@
 	<cffunction name="cacheFlush" access="public" output="false" returntype="void" hint="Removes items from the cache that match the specified regex. Does NOT change the cache management stats.">
 		<cfargument name="key" type="string" required="false" default="" />
 		
-		<cfset var memcached = getMemcached() />
+		<cfset var redis = getRedis() />
 
-		<cfif not structIsEmpty(memcached)>
-			<cfset application.fc.lib.memcached.flush(memcached,arguments.key) />
+		<cfif not structIsEmpty(redis)>
+			<cfset application.fc.lib.redis.flush(redis,arguments.key) />
 		</cfif>
 	</cffunction>
 	

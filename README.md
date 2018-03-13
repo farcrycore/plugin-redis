@@ -1,11 +1,11 @@
-# Memcached Plugin
+# Redis Plugin
 
 NOTE: This plugin is compatible with FarCry 7.1.0 and over.
 
-*Memcached is available under LGPL and compatible with the open source and commercial licenses of FarCry Core*
+*Redis is available under LGPL and compatible with the open source and commercial licenses of FarCry Core*
 
-Memcached replaces the default object and webskin caching mechanism in Core with 
-an external memcached server. This is an excellent approach for moving memory load 
+Redis replaces the default object and webskin caching mechanism in Core with 
+an external redis server. This is an excellent approach for moving memory load 
 out of ColdFusion and off the application server. A key benefit for sites running 
 in high availability environments is that all the application servers in the 
 cluster can be made to share a central cache.
@@ -19,11 +19,11 @@ This plugin also works with Amazon ElastiCache.
 
 ## Setup
 
-1. Install [memcached][1]
+1. Install [redis][1]
 2. Add this plugin to the project
 3. Restart your application
-4. Open the "Memcached" config
-5. Copy in your server details, in the form "your.memcachedhost.com:11211" (if you 
+4. Open the "Redis" config
+5. Copy in your server details, in the form "your.redishost.com:11211" (if you 
    don't understand the other settings, it is safe to leave the default values)
 6. Save the config
 7. Restart the application
@@ -33,24 +33,24 @@ This plugin also works with Amazon ElastiCache.
 
 ### Logging
 
-The plugin logs status and errors to "yourappname_memcached.log" using cflog. This 
+The plugin logs status and errors to "redis.log" using cflog. This 
 will sometimes have information pertaining to the plugin's ability to access the 
-memcached server.
+redis server.
 
 ### Reports
 
-The memcached reports are accessible in the Webtop under Admin -> General Admin ->
-Application Settings -> Memcached Summary.
+The redis reports are accessible in the Webtop under Admin -> General Admin ->
+Application Settings -> Redis Summary.
 
-The main screen has information about the general health of the memcached servers 
+The main screen has information about the general health of the redis servers 
 (or clusters, in the case of ElastiCache). You can drill down to a specific server 
 or application by clicking "overview" or "this application".
 
 *NOTE*: the information provided on the drill-down pages is aquired via an undocumented
-feature of memcached which the developers are planning to deprecate.
+feature of redis which the developers are planning to deprecate.
 
 *NOTE*: generating the drill-down reports can have a performance impact on the
-application and memcached servers. If you have more than 100 000 items in your cache,
+application and redis servers. If you have more than 100 000 items in your cache,
 you may find that the reports time out.
 
 ## Cache Invalidation
@@ -71,12 +71,12 @@ on one server without breaking the site on another unupdated server.
 ### Rebuild Site
 
 This option, in the Tray, invalidates every key used by the site, and will affect
-every server using the same Memcached server.
+every server using the same Redis server.
 
 ### Fine Grained
 
-The Memcached page in the webtop (Admin -> General Admin -> Application Settings -> 
-Memcached Summary) has options for manually triggering invalidation either across the
+The Redis page in the webtop (Admin -> General Admin -> Application Settings -> 
+Redis Summary) has options for manually triggering invalidation either across the
 entire application or for specific sections of the cache.
 
-[1]: http://memcached.org/
+[1]: http://redis.org/

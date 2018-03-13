@@ -1,27 +1,14 @@
-<cfcomponent extends="farcry.core.packages.forms.forms" displayname="Memcached" hint="Memcached object broker settings" key="memcached">
+<cfcomponent extends="farcry.core.packages.forms.forms" displayname="Redis" hint="Redis object broker settings" key="redis">
 
-	<cfproperty name="servers" type="longchar" required="false" 
-		ftSeq="1" ftWizardStep="" ftFieldset="Memcached" ftLabel="Servers"
-		ftHint="One server per line in the form 'hostname:port'. NOTE: you can also enter an Amazon ElastiCache configuration endpoint.">
+	<cfproperty name="server" type="string" required="false" 
+		ftSeq="1" ftWizardStep="" ftFieldset="Redis" ftLabel="Server"
+		ftHint="Redis Server Hostname / IP address">
 
-	<cfproperty name="protocol" type="string" required="false" 
-		ftSeq="2" ftWizardStep="" ftFieldset="Memcached" ftLabel="Protocol" 
-		ftType="list" ftDefault="binary" 
-		ftList="TEXT:Text,BINARY:Binary"
-		ftHint="NOTE: this is not used when the server is an Amazon ElastiCache configuration endpoint.">
+	<cfproperty name="port" type="string" required="false" 
+		ftSeq="2" ftWizardStep="" ftFieldset="Redis" ftLabel="Port" 
+		ftHint="Redis Server Port">
 
-	<cfproperty name="locator" type="string" required="false" 
-		ftSeq="3" ftWizardStep="" ftFieldset="Memcached" ftLabel="Locator" 
-		ftType="list" ftDefault="ARRAY_MOD" 
-		ftList="ARRAY_MOD:Array modulus,CONSISTENT:Consistent hash algorithm,VBUCKET:vBucket"
-		ftHint="NOTE: this is not used when the server is an Amazon ElastiCache configuration endpoint.">
-	
-	<cfproperty name="operationTimeout" type="string" required="false" 
-		ftSeq="4" ftWizardStep="" ftFieldset="Memcached" ftLabel="Operation Timeout" 
-		ftType="integer" ftDefault="2500"
-		ftHint="NOTE: this is not used when the server is an Amazon ElastiCache configuration endpoint.">
-	
-	
+
 	<cffunction name="process" access="public" output="false" returntype="struct">
 		<cfargument name="fields" type="struct" required="true" />
 		
@@ -60,20 +47,20 @@
 
 	<cffunction name="getServersURL" access="public" output="false" returntype="string">
 
-		<cfreturn application.fapi.fixURL(addvalues='type=configMemcached&bodyView=webtopBody',removevalues='server,app,cachetype') />
+		<cfreturn application.fapi.fixURL(addvalues='type=configRedis&bodyView=webtopBody',removevalues='server,app,cachetype') />
 	</cffunction>
 
 	<cffunction name="getServerURL" access="public" output="false" returntype="string">
 		<cfargument name="server" type="string" required="true" />
 
-		<cfreturn application.fapi.fixURL(addvalues='type=configMemcached&bodyView=webtopBodyServer&server=#arguments.server#',removevalues='app,cachetype') />
+		<cfreturn application.fapi.fixURL(addvalues='type=configRedis&bodyView=webtopBodyServer&server=#arguments.server#',removevalues='app,cachetype') />
 	</cffunction>
 
 	<cffunction name="getApplicationURL" access="public" output="false" returntype="string">
 		<cfargument name="server" type="string" required="true" />
 		<cfargument name="app" type="string" required="true" />
 
-		<cfreturn application.fapi.fixURL(addvalues='type=configMemcached&bodyView=webtopBodyApplication&server=#arguments.server#&app=#arguments.app#',removevalues='cachetype') />
+		<cfreturn application.fapi.fixURL(addvalues='type=configRedis&bodyView=webtopBodyApplication&server=#arguments.server#&app=#arguments.app#',removevalues='cachetype') />
 	</cffunction>
 
 	<cffunction name="getTypeURL" access="public" output="false" returntype="string">
@@ -81,7 +68,7 @@
 		<cfargument name="app" type="string" required="true" />
 		<cfargument name="typename" type="string" required="true" />
 
-		<cfreturn application.fapi.fixURL(addvalues='type=configMemcached&bodyView=webtopBodyType&server=#arguments.server#&app=#arguments.app#&cachetype=#arguments.typename#',removevalues='') />
+		<cfreturn application.fapi.fixURL(addvalues='type=configRedis&bodyView=webtopBodyType&server=#arguments.server#&app=#arguments.app#&cachetype=#arguments.typename#',removevalues='') />
 	</cffunction>
 
 	<cffunction name="getKeyURL" access="public" output="false" returntype="string">
@@ -90,7 +77,7 @@
 		<cfargument name="typename" type="string" required="true" />
 		<cfargument name="key" type="string" required="true" />
 
-		<cfreturn application.fapi.fixURL(addvalues='type=configMemcached&view=webtopPageModal&bodyView=webtopBodyKey&server=#arguments.server#&app=#arguments.app#&cachetype=#arguments.typename#&key=#arguments.key#',removevalues='') />
+		<cfreturn application.fapi.fixURL(addvalues='type=configRedis&view=webtopPageModal&bodyView=webtopBodyKey&server=#arguments.server#&app=#arguments.app#&cachetype=#arguments.typename#&key=#arguments.key#',removevalues='') />
 	</cffunction>
 
 </cfcomponent>

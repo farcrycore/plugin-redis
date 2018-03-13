@@ -3,7 +3,7 @@
 	<section id="admin">
 		<subsection id="general">
 			<menu id="systemstatus">
-				<menuitem id="objbrokersummary" label="Memcached Status" typename="configMemcached" bodyview="webtopBody" />
+				<menuitem id="objbrokersummary" label="Redis Status" typename="configRedis" bodyview="webtopBody" />
 			</menu>
 		</subsection>
 	</section>

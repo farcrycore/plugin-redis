@@ -3,208 +3,190 @@
 	<cffunction name="initializeClient" access="public" output="false" returntype="any">
 		<cfargument name="config" type="struct" required="true" />
 
-		<cfset var memcached = "" />
-		<cfset var javaLoader = CreateObject("component", "farcry.core.packages.farcry.javaloader.JavaLoader").init(
-			listtoarray(expandpath("/farcry/plugins/memcached/packages/java/AmazonElastiCacheClusterClient-1.0.jar"))
-		) />
-		<cfset var addresses = "" />
-		<cfset var clientMode = "" />
-		<cfset var protocolType = "" />
-		<cfset var locatorType = "" />
-		<cfset var connectionFactory = "" />
+		<cfset var redis = "" />
+		<cfset var javaLoader = createObject("component", "farcry.core.packages.farcry.javaloader.JavaLoader").init([
+			expandpath("/farcry/plugins/redis/packages/java/redis.clients.jedis-2.7.2.jar"),
+			expandpath("/farcry/plugins/redis/packages/java/org.apache.commons.pool-1.5.6.jar"),
+			expandpath("/farcry/plugins/redis/packages/java/org.apache.commons.pool2-2.4.1.jar")
+		])>
 
-		<cflog type="information" application="true" file="memcached" text="Creating memcached client" />
-		
-		<cfif refindnocase(".*\.cfg.\w+.cache.amazonaws.com",arguments.config.servers)>
-			
-			<cfset addresses = javaLoader.create("net.spy.memcached.AddrUtil").getAddresses(
-				listchangedelims(arguments.config.servers,"#chr(13)##chr(10)#,"," ")
-			) />
-			<cflog type="information" application="true" file="memcached" text="Configuration nodes: #addresses.toString()#" />
-			
-	        <cfset memcached = javaLoader.create("net.spy.memcached.MemcachedClient").init(addresses) />
-			<cflog type="information" application="true" file="memcached" text="Memcached client set up" />
-			
-		<cfelse>
-		
-			<cfset clientMode = javaLoader.create("net.spy.memcached.ClientMode") />
-			<cfset protocolType = javaLoader.create("net.spy.memcached.ConnectionFactoryBuilder$Protocol") />
-			<cfset locatorType = javaLoader.create("net.spy.memcached.ConnectionFactoryBuilder$Locator") />
-			<cfset connectionFactory = javaLoader.create("net.spy.memcached.ConnectionFactoryBuilder")
-				.setProtocol(protocolType[arguments.config.protocol])
-				.setLocatorType(locatorType[arguments.config.locator])
-				.setOpTimeout(JavaCast( "int", arguments.config.operationTimeout ) )
-				.setClientMode(clientMode["Static"])
-				.build() />
-			<cflog type="information" application="true" file="memcached" text="Configuration: #connectionFactory.toString()#" />
-			
-			<cfset addresses = javaLoader.create("net.spy.memcached.AddrUtil").getAddresses(
-				listchangedelims(arguments.config.servers,"#chr(13)##chr(10)#,"," ")
-			) />
-			<cflog type="information" application="true" file="memcached" text="Server nodes: #addresses.toString()#" />
-			
-	        <cfset memcached = javaLoader.create("net.spy.memcached.MemcachedClient").init(connectionFactory, addresses) />
-			<cflog type="information" application="true" file="memcached" text="Memcached client set up" />
-			
-		</cfif>
+		<cflog file="redis" text="Creating redis client for server: #arguments.config.server.toString()#" />
+		<cfset redis = javaLoader.create("redis.clients.jedis.JedisPool").init(arguments.config.server, arguments.config.port)>
+		<cflog file="redis" text="Redis client set up" />
 
-		<cfreturn memcached />
+		<cfreturn redis />
 	</cffunction>
 
 	<cffunction name="get" access="public" output="false" returntype="any" hint="Returns an object from cache if it is there, an empty struct if not. Note that garbage collected data counts as a miss.">
-		<cfargument name="memcached" type="any" required="true" />
+		<cfargument name="redis" type="any" required="true" />
 		<cfargument name="key" type="string" required="true" />
 
 		<cfset var stLocal = structnew() />
 		<cfset var cfcatch = "" />
 
+<!--- <cflog file="redis" type="information" text="redis.get(#arguments.key#)" /> --->
+
         <cfset stLocal.value = structnew() />
 
+		<cfset var res = arguments.redis.getResource()>
 		<cftry>
-			<cfset stLocal.value = arguments.memcached.get(arguments.key) />
-
-			<!--- catch nulls --->
-			<cfif StructKeyExists(stLocal,"value")>
-				<cfset stLocal.value = deserializeByteArray(stLocal.value) />
-			<cfelse>
-				<cfset stLocal.value = structnew() />
-			</cfif>
+			<cfset stLocal.value = deserializeByteArray(res.get(toBinary(toBase64(arguments.key))))>
 
 			<cfcatch>
 				<cfset stLocal.value = structnew() />
+				<cfset arguments.redis.returnBrokenResource(res)>
+				<cfset res = NullValue()>
 			</cfcatch>
+			<cffinally>
+				<cfif NOT isNull(res)>
+					<cfset arguments.redis.returnResource(res)>
+				</cfif>
+			</cffinally>
 		</cftry>
+
+<!--- <cflog file="redis" type="information" text="#serializeJSON(stLocal.value)#" /> --->
 
 		<cfreturn stLocal.value />
 	</cffunction>
 
-	<cffunction name="add" access="public" output="false" returntype="void" hint="Adds the specified key in the cache. Note that if the key IS in cache this is a null operation.">
-		<cfargument name="memcached" type="any" required="true" />
-		<cfargument name="key" type="string" required="true" />
-		<cfargument name="data" type="any" required="true" />
-		<cfargument name="timeout" type="numeric" required="false" default="3600" hint="Number of seconds until this item should timeout" />
-
-		<cfset var cfcatch = "" />
-
-		<cftry>
-			<cfset arguments.memcached.add(arguments.key, min(arguments.timeout,60*60*24*30), serializeByteArray(arguments.data)) />
-
-			<cfcatch>
-				<cfif not structkeyexists(request, "logging")>
-					<cfset request.logging = true />
-					<cflog type="error" application="true" file="memcached" text="Error adding to cache: #cfcatch.message#" />
-					<cfif not find("Interrupted while waiting to add Cmd",cfcatch.message)>
-						<cfset application.fc.lib.error.logData(application.fc.lib.error.normalizeError(cfcatch)) />
-					</cfif>
-					<cfset structDelete(request,"logging") />
-				</cfif>
-			</cfcatch>
-		</cftry>
-	</cffunction>
-
 	<cffunction name="set" access="public" output="false" returntype="void" hint="Puts the specified key in the cache. Note that if the key IS in cache or the data is deliberately empty, the cache is updated but cache queuing is not effected.">
-		<cfargument name="memcached" type="any" required="true" />
+		<cfargument name="redis" type="any" required="true" />
 		<cfargument name="key" type="string" required="true" />
 		<cfargument name="data" type="struct" required="true" />
 		<cfargument name="timeout" type="numeric" required="false" default="3600" hint="Number of seconds until this item should timeout" />
 		
 		<cfset var cfcatch = "" />
 
+<!--- <cflog file="redis" type="information" text="redis.set(#arguments.key#, #arguments.timeout#)" /> --->
+<!--- <cflog file="redis" type="information" text="#serializeJSON(arguments.data)#" /> --->
+
+		<cfset var res = arguments.redis.getResource()>
 		<cftry>
-			<cfset arguments.memcached.set(arguments.key, min(arguments.timeout,60*60*24*30), serializeByteArray(arguments.data)) />
-			
+			<cfset res.set(toBinary(toBase64(arguments.key)), serializeByteArray(arguments.data))>
+			<cfset res.expire(toBinary(toBase64(arguments.key)), arguments.timeout)>
+
 			<cfcatch>
 				<cfif not structkeyexists(request, "logging")>
 					<cfset request.logging = true />
-					<cflog type="error" application="true" file="memcached" text="Error setting to cache: #cfcatch.message#" />
-					<cfif not find("Interrupted while waiting to add Cmd",cfcatch.message)>
-						<cfset application.fc.lib.error.logData(application.fc.lib.error.normalizeError(cfcatch)) />
-					</cfif>
+					<cflog type="error" application="true" file="redis" text="Error setting to cache: #cfcatch.message#" />
+					<cfset application.fc.lib.error.logData(application.fc.lib.error.normalizeError(cfcatch)) />
 					<cfset structDelete(request,"logging") />
 				</cfif>
+				<cfset arguments.redis.returnBrokenResource(res)>
+				<cfset res = NullValue()>
 			</cfcatch>
+			<cffinally>
+				<cfif NOT isNull(res)>
+					<cfset arguments.redis.returnResource(res)>
+				</cfif>
+			</cffinally>
 		</cftry>
 	</cffunction>
 
 	<cffunction name="append" access="public" output="false" returntype="void" hint="Removes items from the cache that match the specified regex. Does NOT change the cache management stats.">
-		<cfargument name="memcached" type="any" required="true" />
+		<cfargument name="redis" type="any" required="true" />
 		<cfargument name="key" type="string" required="false" default="" />
 		<cfargument name="data" type="string" required="true" />
 
 		<cfset var cfcatch = "" />
 		<cfset var val = "" />
 
+		<cfset var res = arguments.redis.getResource()>
 		<cftry>
-			<cfset val = arguments.memcached.gets(arguments.key) />
-			<cfset arguments.memcached.append(val.getCas(), arguments.key, serializeByteArray(arguments.data)) />
+			<cfset res.append(toBinary(toBase64(arguments.key)), serializeByteArray(arguments.data))>
+			<cfset res.expire(toBinary(toBase64(arguments.key)), arguments.timeout)>
 
 			<cfcatch>
 				<cfif not structkeyexists(request, "logging")>
 					<cfset request.logging = true />
-					<cflog type="error" application="true" file="memcached" text="Error appending to cache: #cfcatch.message#" />
-					<cfif not find("Interrupted while waiting to add Cmd",cfcatch.message)>
-						<cfset application.fc.lib.error.logData(application.fc.lib.error.normalizeError(cfcatch)) />
-					</cfif>
+					<cflog type="error" application="true" file="redis" text="Error appending to cache: #cfcatch.message#" />
+					<cfset application.fc.lib.error.logData(application.fc.lib.error.normalizeError(cfcatch)) />
 					<cfset structDelete(request,"logging") />
 				</cfif>
+				<cfset arguments.redis.returnBrokenResource(res)>
+				<cfset res = NullValue()>
 			</cfcatch>
+			<cffinally>
+				<cfif NOT isNull(res)>
+					<cfset arguments.redis.returnResource(res)>
+				</cfif>
+			</cffinally>
 		</cftry>
 	</cffunction>
 
 	<cffunction name="flush" access="public" output="false" returntype="void" hint="Removes items from the cache that match the specified regex. Does NOT change the cache management stats.">
-		<cfargument name="memcached" type="any" required="true" />
+		<cfargument name="redis" type="any" required="true" />
 		<cfargument name="key" type="string" required="false" default="" />
 		
 		<cfset var cfcatch = "" />
 
+<!--- <cflog file="redis" type="information" text="redis.flush()" /> --->
+
+		<cfset var res = arguments.redis.getResource()>
 		<cftry>
-			<cfset arguments.memcached.delete(arguments.key) />
-			
+			<cfset res.del(toBinary(toBase64(arguments.key))) />
+
 			<cfcatch>
-				<!--- do nothing --->
+				<cfset arguments.redis.returnBrokenResource(res)>
+				<cfset res = NullValue()>
 			</cfcatch>
+			<cffinally>
+				<cfif NOT isNull(res)>
+					<cfset arguments.redis.returnResource(res)>
+				</cfif>
+			</cffinally>
 		</cftry>
 	</cffunction>
 
-	<cffunction name="getAvailableServers" access="public" returntype="any" output="false" hint="Get the addresses of available servers.">
-		<cfargument name="memcached" type="any" required="true" />
-
-		<cfreturn arguments.memcached.getAvailableServers() />
-	</cffunction>
 	
 	<cffunction name="getServerStats" access="public" returntype="any" output="false" hint="Get all of the stats from all of the connections.">
-		<cfargument name="memcached" type="any" required="true" />
+		<cfargument name="redis" type="any" required="true" />
 		
 		<cfset var stats = structnew() />
+		<cfset var info = "" />
 		<cfset var i = "" />
 		
-		<cfset stats = mapToStruct(arguments.memcached.getStats()) />
-		
-		<cfloop collection="#stats#" item="i">
-			<cfset stats[i] = mapToStruct(stats[i]) />
+		<cfset var res = arguments.redis.getResource()>
+		<cftry>
+			<cfset info = res.info()>
+			<cfset stats["server"] = {}>
+			<cfset stats["server"].isUnresolved = function() {
+				return false;
+			}>
+
+			<cfcatch>
+				<cfdump var="#cfcatch#">
+				<cfset arguments.redis.returnBrokenResource(res)>
+				<cfset res = NullValue()>
+			</cfcatch>
+			<cffinally>
+				<cfif NOT isNull(res)>
+					<cfset arguments.redis.returnResource(res)>
+				</cfif>
+			</cffinally>
+		</cftry>
+
+		<cfloop list="#info#" index="i" delimiters="#chr(10)##chr(13)#">
+			<cfset stats["server"][listFirst(i, ":")] = listRest(i, ":")>
 		</cfloop>
-		
+
 		<cfreturn stats />
 	</cffunction>
 	
-	<cffunction name="getUnavailableServers" access="public" returntype="any" output="false" hint="Get the addresses of unavailable servers.">
-		<cfargument name="memcached" type="any" required="true" />
-		
-		<cfreturn arguments.memcached.getUnavailableServers() />
-	</cffunction>
-	
-	<cffunction name="getVersions" access="public" returntype="any" output="false" hint="Get the versions of all of the connected memcacheds.">
-		<cfargument name="memcached" type="any" required="true" />
+<!--- 
+	<cffunction name="getVersions" access="public" returntype="any" output="false" hint="Get the versions of all of the connected redis.">
+		<cfargument name="redis" type="any" required="true" />
 		
 		<cfset var versions = structnew() />
 		
-		<cfif structkeyexists(this,"memcached")>
-			<cfset versions = mapToStruct(arguments.memcached.getVersions()) />
+		<cfif structkeyexists(this,"redis")>
+			<cfset versions = mapToStruct(arguments.redis.getVersions()) />
 		</cfif>
 		
 		<cfreturn versions />
 	</cffunction>
-	
+ --->
+
     <cffunction name="mapToStruct" access="private" returntype="struct" output="false">
         <cfargument name="map" type="any" required="true" />
 
@@ -278,6 +260,7 @@
 		<cfreturn stResult />
 	</cffunction>
 
+<!--- 
 	<cffunction name="getItemSizeStats" returntype="struct" output="false">
 		<cfargument name="qItems" type="query" required="true">
 		
@@ -317,6 +300,7 @@
 		
 		<cfreturn stResult />
 	</cffunction>
+ --->
 
 	<cffunction name="getItemTypeStats" returntype="struct" output="false">
 		<cfargument name="qItems" type="query" required="true">
@@ -558,7 +542,7 @@
 	<cffunction name="slabStats" returntype="struct" output="false">
 		<cfargument name="server" type="string" required="false" />
 		
-		<cfset var stats = mapToStruct(application.fc.lib.objectbroker.memcached.getStats('items')) />
+		<cfset var stats = application.fc.lib.objectbroker.redis.getStats('items') />
 		<cfset var socket = "" />
 		
 		<cfloop collection="#stats#" item="socket">
