@@ -853,7 +853,7 @@
 			<cfset key = key & "_#dateformat(arguments.ObjectDate,'yyyymmdd')##timeformat(arguments.ObjectDate,'hhmmss')#_#arguments.template#_#hash(arguments.webskinCacheID)#" />
 		</cfif>
 		
-		<cfreturn key />
+		<cfreturn lcase(key) />
 	</cffunction>
 
 	<cffunction name="getCacheVersion" access="public" output="false" returntype="string" hint="The plugin stores a cache 'version' in redis that should be used in all keys. Updating this version should equivilent to clearing the cache.">
