@@ -928,7 +928,6 @@
 		
 		<cfset var value = structnew() />
 		<cfset var starttime = getTickCount() />
-		<cfset var id = "redis-get-#application.fapi.getUUID()#" />
 		<cfset var redis = getRedis() />
 
 		<cfif not structIsEmpty(redis)>
