@@ -4,6 +4,8 @@
 		<cfargument name="config" type="struct" required="true" />
 
 		<cfset var redis = "" />
+		<cfset var redisConfig = "" />
+
 		<cfset var javaLoader = createObject("component", "farcry.core.packages.farcry.javaloader.JavaLoader").init([
 			expandpath("/farcry/plugins/redis/packages/java/redis.clients.jedis-2.7.2.jar"),
 			expandpath("/farcry/plugins/redis/packages/java/org.apache.commons.pool-1.5.6.jar"),
@@ -11,7 +13,13 @@
 		])>
 
 		<cflog file="redis" text="Creating redis client for server: #arguments.config.server.toString()#" />
-		<cfset redis = javaLoader.create("redis.clients.jedis.JedisPool").init(arguments.config.server, arguments.config.port)>
+		<cfset redisConfig = javaLoader.create("redis.clients.jedis.JedisPoolConfig").init()>
+		<cfset redisConfig.setMaxTotal(128)>
+		<cfif len(arguments.config.password)>
+			<cfset redis = javaLoader.create("redis.clients.jedis.JedisPool").init(redisConfig, arguments.config.server, arguments.config.port, 15000, arguments.config.password)>
+		<cfelse>
+			<cfset redis = javaLoader.create("redis.clients.jedis.JedisPool").init(redisConfig, arguments.config.server, arguments.config.port, 15000)>
+		</cfif>
 		<cflog file="redis" text="Redis client set up" />
 
 		<cfreturn redis />

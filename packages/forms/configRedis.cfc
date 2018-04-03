@@ -8,6 +8,10 @@
 		ftSeq="2" ftWizardStep="" ftFieldset="Redis" ftLabel="Port" 
 		ftHint="Redis Server Port">
 
+	<cfproperty name="password" type="string" required="false" 
+		ftSeq="3" ftWizardStep="" ftFieldset="Redis" ftLabel="Password" 
+		ftHint="Redis Password">
+
 
 	<cffunction name="process" access="public" output="false" returntype="struct">
 		<cfargument name="fields" type="struct" required="true" />

@@ -794,6 +794,7 @@
 
 		<cfparam name="this.config.server" default="#application.fapi.getConfig('redis','server','')#">
 		<cfparam name="this.config.port" default="#application.fapi.getConfig('redis','port','')#">
+		<cfparam name="this.config.password" default="#application.fapi.getConfig('redis','password','')#">
 
 		<cfif isdefined("this.config.server") and len(trim(this.config.server))
 			and isdefined("this.config.port") and len(trim(this.config.port))>
