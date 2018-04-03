@@ -30,9 +30,13 @@
 
 		<cfset var res = arguments.redis.getResource()>
 		<cftry>
-			<cfset stLocal.value = deserializeByteArray(res.get(toBinary(toBase64(arguments.key))))>
+			<cfset var result = res.get(toBinary(toBase64(arguments.key)))>
+			<cfif NOT isNull(result)>
+				<cfset stLocal.value = deserializeByteArray(result)>
+			</cfif>
 
 			<cfcatch>
+<!--- <cflog file="redis_error" type="error" text="get(#arguments.key#) -- #serializeJSON(cfcatch.message)#" /> --->
 				<cfset stLocal.value = structnew() />
 				<cfset arguments.redis.returnBrokenResource(res)>
 				<cfset res = NullValue()>
@@ -66,6 +70,7 @@
 			<cfset res.expire(toBinary(toBase64(arguments.key)), arguments.timeout)>
 
 			<cfcatch>
+<!--- <cflog file="redis_error" type="error" text="set(#arguments.key#) -- #serializeJSON(cfcatch.message)#" /> --->
 				<cfif not structkeyexists(request, "logging")>
 					<cfset request.logging = true />
 					<cflog type="error" application="true" file="redis" text="Error setting to cache: #cfcatch.message#" />
@@ -97,6 +102,7 @@
 			<cfset res.expire(toBinary(toBase64(arguments.key)), arguments.timeout)>
 
 			<cfcatch>
+<!--- <cflog file="redis_error" type="error" text="append(#arguments.key#) -- #serializeJSON(cfcatch.message)#" /> --->
 				<cfif not structkeyexists(request, "logging")>
 					<cfset request.logging = true />
 					<cflog type="error" application="true" file="redis" text="Error appending to cache: #cfcatch.message#" />
