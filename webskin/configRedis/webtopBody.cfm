@@ -167,12 +167,48 @@
 								<cfif stServerStats["server"].uptime_in_seconds mod 86400 gt 3600>#int((stServerStats["server"].uptime_in_seconds mod 86400)/3600)#h</cfif>
 								<cfif stServerStats["server"].uptime_in_seconds mod 3600 gt 60>#int((stServerStats["server"].uptime_in_seconds mod 3600)/60)#m</cfif>
 							</td>
-							<td>#numberformat(stServerStats["server"].total_net_input_bytes/1024/1024,"0.00")#Mb</td>
-							<td>#numberformat(stServerStats["server"].total_net_output_bytes/1024/1024,"0.00")#Mb</td>
-							<td>#listLast(listFirst(stServerStats["server"].db0), "=")#</td>
-							<td>#stServerStats["server"].keyspace_misses#</td>
-							<td>#stServerStats["server"].keyspace_hits#</td>
-							<td>#stServerStats["server"].evicted_keys#</td>
+							<td>
+								<cfif structKeyExists(stServerStats["server"], "total_net_input_bytes")>
+									#numberformat(stServerStats["server"].total_net_input_bytes/1024/1024,"0.00")#Mb
+								<cfelse>
+									N/A
+								</cfif>
+							</td>
+							<td>
+								<cfif structKeyExists(stServerStats["server"], "total_net_output_bytes")>
+									#numberformat(stServerStats["server"].total_net_output_bytes/1024/1024,"0.00")#Mb
+								<cfelse>
+									N/A
+								</cfif>
+							</td>
+							<td>
+								<cfif structKeyExists(stServerStats["server"], "db0")>
+									#listLast(listFirst(stServerStats["server"].db0), "=")#
+								<cfelse>
+									N/A
+								</cfif>
+							</td>
+							<td>
+								<cfif structKeyExists(stServerStats["server"], "keyspace_misses")>
+									#stServerStats["server"].keyspace_misses#
+								<cfelse>
+									N/A
+								</cfif>
+							</td>
+							<td>
+								<cfif structKeyExists(stServerStats["server"], "keyspace_hits")>
+									#stServerStats["server"].keyspace_hits#
+								<cfelse>
+									N/A
+								</cfif>
+							</td>
+							<td>
+								<cfif structKeyExists(stServerStats["server"], "evicted_keys")>
+									#stServerStats["server"].evicted_keys#
+								<cfelse>
+									N/A
+								</cfif>
+							</td>
 						</cfif>
 					</tr>
 				</cfloop>
