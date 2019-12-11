@@ -23,8 +23,7 @@ This plugin also works with Amazon ElastiCache.
 2. Add this plugin to the project
 3. Restart your application
 4. Open the "Redis" config
-5. Copy in your server details, in the form "your.redishost.com:11211" (if you 
-   don't understand the other settings, it is safe to leave the default values)
+5. Copy in your server details
 6. Save the config
 7. Restart the application
 8. Test
@@ -80,3 +79,13 @@ Redis Summary) has options for manually triggering invalidation either across th
 entire application or for specific sections of the cache.
 
 [1]: http://redis.org/
+
+## Support for cache warming functionality
+
+- `application.fc.lib.objectbroker.prepareCacheVersion` and `application.fc.lib.objectbroker.finalizeCacheVersion`
+  allow a developer to access the next cache version (see invalidation above),
+  populate that cache, then update the app to use that version. This allows the
+  developer to clear the current cache without flooding the app with uncached
+  requests.
+- A new config (Access Key), and support for URL parameters in the form `cacheversion_[type]_[accesskey]=N`
+  allows a developer to make a request that populates a specific cache version.

@@ -12,6 +12,10 @@
 		ftSeq="3" ftWizardStep="" ftFieldset="Redis" ftLabel="Password" 
 		ftHint="Redis Password">
 
+    <cfproperty name="accessKey" type="string" ftDefault=""
+		ftSeq="4" ftWizardStep="" ftFieldset="Redis" ftLabel="Access Key"
+		ftHint="This key needs to be passed into HTTP requests that override the cache version. This should be valid as a query parameter key.">
+
 
 	<cffunction name="process" access="public" output="false" returntype="struct">
 		<cfargument name="fields" type="struct" required="true" />
